@@ -21,7 +21,6 @@ dist-ssr
 .env.test
 
 # Sensitive files
-.env.example
 *.key
 *.pem
 *.p12
@@ -29,6 +28,7 @@ dist-ssr
 secrets.json
 credentials.json
 oauth.json
+
 
 # Editor directories and files
 .vscode/*
