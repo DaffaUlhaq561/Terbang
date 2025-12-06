@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
-<<<<<<< HEAD
 import { useNavigate, useLocation } from "react-router-dom";
-=======
-import { useNavigate } from "react-router-dom";
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
 import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -32,11 +28,8 @@ const Products = () => {
     description: ""
   });
 
-<<<<<<< HEAD
   const location = useLocation();
 
-=======
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
@@ -52,7 +45,6 @@ const Products = () => {
       setProducts(mockProducts);
       localStorage.setItem("products", JSON.stringify(mockProducts));
     }
-<<<<<<< HEAD
 
     const params = new URLSearchParams(location.search);
     const addName = params.get("add");
@@ -61,9 +53,6 @@ const Products = () => {
       setIsOpen(true);
     }
   }, [navigate, location.search]);
-=======
-  }, [navigate]);
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
 
   const generateDescription = async () => {
     if (!formData.name || !formData.category) {

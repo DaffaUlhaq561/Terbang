@@ -95,3 +95,4 @@ const Navbar = ({ user }: NavbarProps) => {
 };
 
 export default Navbar;
+

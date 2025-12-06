@@ -1,40 +1,25 @@
-import dotenv from "dotenv";
-import express from "express";
-import multer from "multer";
-import cors from "cors";
 import OpenAI from "openai";
 
-dotenv.config();
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
-const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-app.use(cors());
-app.use(express.json({ limit: "10mb" }));
-
-const hasApiKey = Boolean(process.env.OPENAI_API_KEY);
-const openai = hasApiKey ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
-
-app.post("/api/scan", upload.single("image"), async (req, res) => {
   try {
-    let dataUrl;
-    const file = req.file;
-    if (file) {
-      const mime = file.mimetype || "image/png";
-      const base64 = file.buffer.toString("base64");
-      dataUrl = `data:${mime};base64,${base64}`;
-    } else if (req.body && typeof req.body.dataUrl === "string") {
-      dataUrl = req.body.dataUrl;
-    } else {
-      return res.status(400).json({ error: "Image is required (multipart 'image' or JSON 'dataUrl')" });
+    const { dataUrl } = req.body || {};
+    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+      return res.status(400).json({ error: "Invalid or missing 'dataUrl'" });
     }
 
+    const hasApiKey = Boolean(process.env.OPENAI_API_KEY);
     let parsed;
-    if (hasApiKey && openai) {
+    if (hasApiKey) {
       const prompt = `Anda adalah mesin pengenal produk retail untuk pasar Indonesia.
 Kembalikan JSON dengan field: name, category, type, confidence (0..1), salesTrend (mis. "+15%"), insight.
 Jangan keluarkan teks lain selain JSON valid.`;
 
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         response_format: { type: "json_object" },
@@ -74,7 +59,7 @@ Jangan keluarkan teks lain selain JSON valid.`;
       insight: parsed.insight ?? "Tidak ada insight.",
     };
 
-    res.json(result);
+    return res.status(200).json(result);
   } catch (err) {
     console.error(err);
     const fallback = {
@@ -87,11 +72,6 @@ Jangan keluarkan teks lain selain JSON valid.`;
       salesTrend: "+0%",
       insight: "Terjadi kesalahan analisis. Mode fallback digunakan.",
     };
-    res.status(200).json(fallback);
+    return res.status(200).json(fallback);
   }
-});
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`AI Scan server running on http://localhost:${PORT}`);
-});
+}

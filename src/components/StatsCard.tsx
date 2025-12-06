@@ -40,3 +40,4 @@ const StatsCard = ({ title, value, icon, trend, status }: StatsCardProps) => {
 };
 
 export default StatsCard;
+

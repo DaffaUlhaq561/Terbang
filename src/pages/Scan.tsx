@@ -4,21 +4,28 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-<<<<<<< HEAD
-import { useLocation, useNavigate as useNav } from "react-router-dom";
-=======
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
 import ScanResult from "@/components/ScanResult";
+
+type User = { name: string; email: string; avatar: string };
+type Product = { name: string; category: string; stock: number; salesTrend?: string; image?: string };
+type ScanResultData = {
+  name: string;
+  category: string;
+  type: string;
+  confidence: number;
+  stock: number;
+  status: string;
+  salesTrend: string;
+  insight: string;
+  image: string;
+};
 
 const Scan = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<any>(null);
-<<<<<<< HEAD
+  const [result, setResult] = useState<ScanResultData | null>(null);
   const [notFound, setNotFound] = useState<{ name: string } | null>(null);
-=======
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,25 +42,32 @@ const Scan = () => {
     if (!file) return;
 
     setScanning(true);
-<<<<<<< HEAD
     try {
-      const formData = new FormData();
-      formData.append("image", file);
+      const toDataUrl = (f: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = reject;
+          reader.readAsDataURL(f);
+        });
+
+      const dataUrl = await toDataUrl(file);
 
       const res = await fetch("/api/scan", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
       });
 
       if (!res.ok) throw new Error("Gagal memproses gambar dengan AI");
       const data = await res.json();
 
       const productsData = localStorage.getItem("products");
-      const products = productsData ? JSON.parse(productsData) : [];
+      const products: Product[] = productsData ? JSON.parse(productsData) : [];
 
       const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
       const target = norm(data.name || "");
-      const found = products.find((p: any) => {
+      const found = products.find((p: Product) => {
         const pn = norm(p.name || "");
         return pn.includes(target) || target.includes(pn);
       });
@@ -67,7 +81,8 @@ const Scan = () => {
           stock: found.stock,
           status: found.stock > 20 ? "safe" : found.stock > 0 ? "warning" : "danger",
           salesTrend: found.salesTrend || "+0%",
-          image: found.image || URL.createObjectURL(file),
+          insight: data.insight || "Produk teridentifikasi",
+          image: found.image || dataUrl,
         });
         toast.success("Produk ditemukan di katalog");
       } else {
@@ -80,28 +95,9 @@ const Scan = () => {
       toast.error("Terjadi kesalahan saat menganalisis gambar");
     } finally {
       setScanning(false);
+      // Reset input value so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-=======
-    
-    // Mock AI Vision API call
-    setTimeout(() => {
-      const mockResult = {
-        name: "Coca Cola 330ml",
-        category: "Minuman",
-        type: "Soft Drink",
-        confidence: 0.95,
-        stock: 45,
-        status: "safe",
-        salesTrend: "+15%",
-        insight: "Penjualan produk ini naik 15% minggu ini. Stok aman untuk 2 minggu.",
-        image: URL.createObjectURL(file)
-      };
-      
-      setResult(mockResult);
-      setScanning(false);
-      toast.success("Produk berhasil dikenali!");
-    }, 2000);
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
   };
 
   if (!user) return null;
@@ -109,7 +105,7 @@ const Scan = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar user={user} />
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="text-center space-y-2">
@@ -119,11 +115,7 @@ const Scan = () => {
             </p>
           </div>
 
-<<<<<<< HEAD
           {!result && !notFound && (
-=======
-          {!result && (
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
             <Card className="p-8 space-y-6 border-dashed border-2 border-primary/30">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-32 h-32 rounded-full bg-gradient-primary flex items-center justify-center">
@@ -161,7 +153,6 @@ const Scan = () => {
             </Card>
           )}
 
-<<<<<<< HEAD
           {notFound && (
             <Card className="p-8 space-y-4">
               <h2 className="text-2xl font-bold">Barang tidak tersedia</h2>
@@ -170,8 +161,7 @@ const Scan = () => {
                 <Button
                   className="bg-gradient-primary"
                   onClick={() => {
-                    const params = new URLSearchParams({ add: notFound.name });
-                    window.location.href = `/products?${params.toString()}`;
+                    navigate(`/products?add=${encodeURIComponent(notFound.name)}`);
                   }}
                 >
                   ➕ Tambah Barang
@@ -183,12 +173,13 @@ const Scan = () => {
             </Card>
           )}
 
-=======
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
           {result && (
-            <ScanResult 
-              result={result} 
-              onScanAgain={() => setResult(null)}
+            <ScanResult
+              result={result}
+              onScanAgain={() => {
+                setResult(null);
+                setNotFound(null);
+              }}
             />
           )}
         </div>

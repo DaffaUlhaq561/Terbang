@@ -2,11 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-<<<<<<< HEAD
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-=======
-import { BrowserRouter, Routes, Route } from "react-router-dom";
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
@@ -25,11 +21,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-<<<<<<< HEAD
           <Route path="/" element={<Navigate to="/login" replace />} />
-=======
-          <Route path="/" element={<Login />} />
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />

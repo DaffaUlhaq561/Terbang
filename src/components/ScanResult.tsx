@@ -81,15 +81,12 @@ const ScanResult = ({ result, onScanAgain }: ScanResultProps) => {
 
       <div className="flex gap-3">
         <Button 
-<<<<<<< HEAD
           variant="secondary"
           onClick={onScanAgain}
         >
           ⬅️ Kembali
         </Button>
         <Button 
-=======
->>>>>>> 1aa7b5416df4f8a05c7a02fc2f8f7f396b90e440
           onClick={onScanAgain}
           className="bg-gradient-primary hover:opacity-90"
         >
