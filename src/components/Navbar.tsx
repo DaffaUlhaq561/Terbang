@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
 import { toast } from "sonner";
 
 interface NavbarProps {
@@ -38,55 +40,47 @@ const Navbar = ({ user }: NavbarProps) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/dashboard")}
-            >
-              Dashboard
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/products")}
-            >
-              Produk
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/scan")}
-            >
-              Scan
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/report")}
-            >
-              Laporan
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/ai-chat")}
-            >
-              AI Chat
-            </Button>
+            <div className="hidden md:flex items-center gap-2">
+              <Button variant="ghost" onClick={() => navigate("/dashboard")}>Dashboard</Button>
+              <Button variant="ghost" onClick={() => navigate("/products")}>Produk</Button>
+              <Button variant="ghost" onClick={() => navigate("/scan")}>Scan</Button>
+              <Button variant="ghost" onClick={() => navigate("/report")}>Laporan</Button>
+              <Button variant="ghost" onClick={() => navigate("/ai-chat")}>AI Chat</Button>
+            </div>
 
-            <div className="flex items-center gap-3 pl-4 border-l border-primary/10">
-              <img 
-                src={user.avatar} 
-                alt={user.name}
-                className="w-8 h-8 rounded-full"
-              />
-              <div className="hidden md:block text-sm">
+            <div className="flex items-center gap-3 pl-2 md:pl-4 border-l border-primary/10">
+              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+              <div className="hidden lg:block text-sm">
                 <p className="font-medium">{user.name}</p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>Logout</Button>
             </div>
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" className="md:hidden p-2">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                <div className="flex items-center gap-3 mb-4">
+                  <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full" />
+                  <div className="text-sm">
+                    <p className="font-medium">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Button variant="outline" onClick={() => navigate("/dashboard")}>Dashboard</Button>
+                  <Button variant="outline" onClick={() => navigate("/products")}>Produk</Button>
+                  <Button variant="outline" onClick={() => navigate("/scan")}>Scan</Button>
+                  <Button variant="outline" onClick={() => navigate("/report")}>Laporan</Button>
+                  <Button variant="outline" onClick={() => navigate("/ai-chat")}>AI Chat</Button>
+                  <Button variant="default" onClick={handleLogout}>Logout</Button>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
