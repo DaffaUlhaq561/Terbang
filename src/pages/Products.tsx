@@ -11,13 +11,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { mockProducts } from "@/lib/mockData";
 
+type User = { name: string; email: string; avatar: string };
+type Product = {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+  price: number;
+  image: string;
+  description?: string;
+  salesTrend?: string;
+};
+
 const Products = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [isCatOpen, setIsCatOpen] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [catDraft, setCatDraft] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
   
   const [formData, setFormData] = useState({
     name: "",
@@ -44,6 +60,16 @@ const Products = () => {
     } else {
       setProducts(mockProducts);
       localStorage.setItem("products", JSON.stringify(mockProducts));
+    }
+    const savedCategories = localStorage.getItem("categories");
+    if (savedCategories) {
+      setCategories(JSON.parse(savedCategories));
+    } else {
+      const base = Array.from(new Set((savedProducts ? JSON.parse(savedProducts) : mockProducts).map((p: Product) => p.category)));
+      const defaults = ["Minuman", "Makanan", "Snack", "Cokelat"];
+      const merged = Array.from(new Set([...base, ...defaults]));
+      setCategories(merged as string[]);
+      localStorage.setItem("categories", JSON.stringify(merged));
     }
 
     const params = new URLSearchParams(location.search);
@@ -102,7 +128,7 @@ const Products = () => {
     resetForm();
   };
 
-  const handleEdit = (product: any) => {
+  const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
@@ -133,6 +159,43 @@ const Products = () => {
     });
     setEditingProduct(null);
     setIsOpen(false);
+  };
+
+  const openCategoryManager = () => {
+    setCatDraft(categories);
+    setNewCategory("");
+    setIsCatOpen(true);
+  };
+
+  const saveCategories = () => {
+    const cleaned = catDraft.map((c) => c.trim()).filter((c) => c.length > 0);
+    const unique = Array.from(new Set(cleaned));
+    setCategories(unique);
+    localStorage.setItem("categories", JSON.stringify(unique));
+    if (unique.length > 0 && !unique.includes(formData.category)) {
+      setFormData((prev) => ({ ...prev, category: "" }));
+    }
+    setIsCatOpen(false);
+    toast.success("Jenis barang berhasil disimpan");
+  };
+
+  const addCategory = () => {
+    const v = newCategory.trim();
+    if (!v) return;
+    if (catDraft.includes(v)) {
+      toast.info("Jenis sudah ada");
+      return;
+    }
+    setCatDraft((prev) => [...prev, v]);
+    setNewCategory("");
+  };
+
+  const removeCategory = (idx: number) => {
+    setCatDraft((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateCategory = (idx: number, value: string) => {
+    setCatDraft((prev) => prev.map((c, i) => (i === idx ? value : c)));
   };
 
   if (!user) return null;
@@ -168,7 +231,12 @@ const Products = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="category">Kategori</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="category">Kategori</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={openCategoryManager}>
+                        Kelola Jenis
+                      </Button>
+                    </div>
                     <Select
                       value={formData.category}
                       onValueChange={(value) => setFormData({...formData, category: value})}
@@ -177,10 +245,9 @@ const Products = () => {
                         <SelectValue placeholder="Pilih kategori" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Minuman">Minuman</SelectItem>
-                        <SelectItem value="Makanan">Makanan</SelectItem>
-                        <SelectItem value="Snack">Snack</SelectItem>
-                        <SelectItem value="Cokelat">Cokelat</SelectItem>
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -254,10 +321,39 @@ const Products = () => {
           </Dialog>
         </div>
 
+        <Dialog open={isCatOpen} onOpenChange={setIsCatOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Kelola Jenis Barang</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {catDraft.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Belum ada jenis. Tambahkan di bawah.</p>
+                )}
+                {catDraft.map((c, idx) => (
+                  <div key={`${c}-${idx}`} className="flex items-center gap-2">
+                    <Input value={c} onChange={(e) => updateCategory(idx, e.target.value)} />
+                    <Button type="button" variant="destructive" onClick={() => removeCategory(idx)}>Hapus</Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Input placeholder="Jenis baru" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
+                <Button type="button" variant="secondary" onClick={addCategory}>Tambah</Button>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" className="bg-gradient-primary flex-1" onClick={saveCategories}>Simpan</Button>
+                <Button type="button" variant="outline" onClick={() => setIsCatOpen(false)}>Tutup</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.map((product) => (
             <div key={product.id} className="relative group">
-              <ProductCard product={product} />
+              <ProductCard product={{ ...product, salesTrend: product.salesTrend || "+0%" }} />
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                 <Button
                   size="sm"
