@@ -5,14 +5,15 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUP
 
 let supabase = null;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.warn('SUPABASE_URL or SUPABASE_SERVICE_KEY not set. Server supabase client disabled.');
+  // Silent fail - don't log warning as it may be captured and returned as response
+  // console.warn('SUPABASE_URL or SUPABASE_SERVICE_KEY not set. Server supabase client disabled.');
 } else {
   try {
     supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
       auth: { persistSession: false },
     });
   } catch (err) {
-    console.error('Failed to create Supabase client:', err.message || err);
+    // Silent fail
     supabase = null;
   }
 }

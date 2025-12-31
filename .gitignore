@@ -29,6 +29,9 @@ secrets.json
 credentials.json
 oauth.json
 
+# Local PowerShell scripts (may contain credentials)
+*.local.ps1
+
 
 # Editor directories and files
 .vscode/*
