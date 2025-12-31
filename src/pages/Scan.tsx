@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import ScanResult from "@/components/ScanResult";
+import { addScanRecord } from "@/lib/database";
 
 type User = { name: string; email: string; avatar: string };
 type Product = { name: string; category: string; stock: number; salesTrend?: string; image?: string };
@@ -84,10 +85,31 @@ const Scan = () => {
           insight: data.insight || "Produk teridentifikasi",
           image: found.image || dataUrl,
         });
+        if (user?.email) {
+          addScanRecord({
+            email: user.email,
+            productName: found.name,
+            identifiedName: data.name || found.name,
+            status: found.stock > 20 ? "safe" : found.stock > 0 ? "warning" : "danger",
+            confidence: typeof data.confidence === "number" ? data.confidence : 0.8,
+            image: dataUrl,
+          });
+        }
+
         toast.success("Produk ditemukan di katalog");
       } else {
         setNotFound({ name: data.name || "Produk" });
         setResult(null);
+        if (user?.email) {
+          addScanRecord({
+            email: user.email,
+            productName: undefined,
+            identifiedName: data.name || "Produk",
+            status: "not_found",
+            confidence: typeof data.confidence === "number" ? data.confidence : 0.5,
+            image: dataUrl,
+          });
+        }
         toast.info("Barang tidak tersedia dalam katalog");
       }
     } catch (err) {

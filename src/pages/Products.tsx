@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { mockProducts } from "@/lib/mockData";
+import { supabase } from "@/lib/supabaseClient";
 
 type User = { name: string; email: string; avatar: string };
 type Product = {
@@ -34,7 +35,7 @@ const Products = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [catDraft, setCatDraft] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
-  
+
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -54,17 +55,46 @@ const Products = () => {
     }
     setUser(JSON.parse(userData));
 
-    const savedProducts = localStorage.getItem("products");
-    if (savedProducts) {
-      setProducts(JSON.parse(savedProducts));
-    } else {
-      setProducts(mockProducts);
-      localStorage.setItem("products", JSON.stringify(mockProducts));
-    }
+    // Load products from Supabase
+    const loadProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('id', { ascending: false });
+
+        if (error) {
+          console.error('Error loading products from Supabase:', error);
+          // Fallback to localStorage if Supabase fails
+          const savedProducts = localStorage.getItem("products");
+          if (savedProducts) {
+            setProducts(JSON.parse(savedProducts));
+          } else {
+            setProducts(mockProducts);
+            localStorage.setItem("products", JSON.stringify(mockProducts));
+          }
+        } else {
+          // Successfully loaded from Supabase
+          const productsData = data || [];
+          setProducts(productsData);
+          // Sync to localStorage as cache
+          localStorage.setItem("products", JSON.stringify(productsData));
+        }
+      } catch (err) {
+        console.error('Error:', err);
+        // Fallback to localStorage
+        const savedProducts = localStorage.getItem("products");
+        setProducts(savedProducts ? JSON.parse(savedProducts) : mockProducts);
+      }
+    };
+
+    loadProducts();
+
     const savedCategories = localStorage.getItem("categories");
     if (savedCategories) {
       setCategories(JSON.parse(savedCategories));
     } else {
+      const savedProducts = localStorage.getItem("products");
       const base = Array.from(new Set((savedProducts ? JSON.parse(savedProducts) : mockProducts).map((p: Product) => p.category)));
       const defaults = ["Minuman", "Makanan", "Snack", "Cokelat"];
       const merged = Array.from(new Set([...base, ...defaults]));
@@ -87,7 +117,7 @@ const Products = () => {
     }
 
     setGenerating(true);
-    
+
     // Mock AI Description Generator
     setTimeout(() => {
       const descriptions = [
@@ -95,7 +125,7 @@ const Products = () => {
         `Nikmati kesegaran ${formData.name} dari kategori ${formData.category}. Produk ini sangat populer dan menjadi pilihan favorit pelanggan kami.`,
         `${formData.name} hadir dengan kualitas terbaik di kelasnya. Sebagai bagian dari kategori ${formData.category}, produk ini memberikan nilai maksimal untuk kebutuhan Anda.`
       ];
-      
+
       const randomDescription = descriptions[Math.floor(Math.random() * descriptions.length)];
       setFormData(prev => ({ ...prev, description: randomDescription }));
       setGenerating(false);
@@ -103,29 +133,75 @@ const Products = () => {
     }, 1500);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editingProduct) {
-      const updated = products.map(p => 
-        p.id === editingProduct.id ? { ...formData, id: editingProduct.id } : p
-      );
-      setProducts(updated);
-      localStorage.setItem("products", JSON.stringify(updated));
-      toast.success("Produk berhasil diupdate!");
-    } else {
-      const newProduct = {
-        ...formData,
-        id: Date.now().toString(),
-        salesTrend: "+0%"
-      };
-      const updated = [...products, newProduct];
-      setProducts(updated);
-      localStorage.setItem("products", JSON.stringify(updated));
-      toast.success("Produk berhasil ditambahkan!");
+
+    try {
+      if (editingProduct) {
+        // Update existing product in Supabase
+        const { error } = await supabase
+          .from('products')
+          .update({
+            name: formData.name,
+            category: formData.category,
+            stock: formData.stock,
+            price: formData.price,
+            image: formData.image,
+            description: formData.description
+          })
+          .eq('id', editingProduct.id);
+
+        if (error) {
+          console.error('Error updating product:', error);
+          toast.error("Gagal update produk ke database");
+          return;
+        }
+
+        // Update local state
+        const updated = products.map(p =>
+          p.id === editingProduct.id ? { ...formData, id: editingProduct.id } : p
+        );
+        setProducts(updated);
+        localStorage.setItem("products", JSON.stringify(updated));
+        toast.success("Produk berhasil diupdate!");
+      } else {
+        // Insert new product to Supabase
+        const newProduct = {
+          name: formData.name,
+          category: formData.category,
+          stock: formData.stock,
+          price: formData.price,
+          image: formData.image,
+          description: formData.description,
+          salesTrend: "+0%"
+        };
+
+        const { data, error } = await supabase
+          .from('products')
+          .insert([newProduct])
+          .select();
+
+        if (error) {
+          console.error('Error adding product:', error);
+          toast.error("Gagal menambahkan produk ke database");
+          return;
+        }
+
+        // Update local state with the new product (including the ID from database)
+        const insertedProduct = data?.[0];
+        if (insertedProduct) {
+          const updated = [insertedProduct, ...products];
+          setProducts(updated);
+          localStorage.setItem("products", JSON.stringify(updated));
+        }
+        toast.success("Produk berhasil ditambahkan!");
+      }
+
+      resetForm();
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error("Terjadi kesalahan saat menyimpan produk");
     }
-    
-    resetForm();
   };
 
   const handleEdit = (product: Product) => {
@@ -141,11 +217,29 @@ const Products = () => {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = products.filter(p => p.id !== id);
-    setProducts(updated);
-    localStorage.setItem("products", JSON.stringify(updated));
-    toast.success("Produk berhasil dihapus!");
+  const handleDelete = async (id: string) => {
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting product:', error);
+        toast.error("Gagal menghapus produk dari database");
+        return;
+      }
+
+      // Update local state
+      const updated = products.filter(p => p.id !== id);
+      setProducts(updated);
+      localStorage.setItem("products", JSON.stringify(updated));
+      toast.success("Produk berhasil dihapus!");
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error("Terjadi kesalahan saat menghapus produk");
+    }
   };
 
   const resetForm = () => {
@@ -203,7 +297,7 @@ const Products = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar user={user} />
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Kelola Produk</h1>
@@ -217,7 +311,7 @@ const Products = () => {
               <DialogHeader>
                 <DialogTitle>{editingProduct ? "Edit Produk" : "Tambah Produk Baru"}</DialogTitle>
               </DialogHeader>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -225,11 +319,11 @@ const Products = () => {
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <div className="flex items-center justify-between">
                       <Label htmlFor="category">Kategori</Label>
@@ -239,7 +333,7 @@ const Products = () => {
                     </div>
                     <Select
                       value={formData.category}
-                      onValueChange={(value) => setFormData({...formData, category: value})}
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih kategori" />
@@ -251,40 +345,40 @@ const Products = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="stock">Stok</Label>
                     <Input
                       id="stock"
                       type="number"
                       value={formData.stock}
-                      onChange={(e) => setFormData({...formData, stock: parseInt(e.target.value)})}
+                      onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="price">Harga (Rp)</Label>
                     <Input
                       id="price"
                       type="number"
                       value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: parseInt(e.target.value)})}
+                      onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
                       required
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="image">URL Gambar</Label>
                   <Input
                     id="image"
                     value={formData.image}
-                    onChange={(e) => setFormData({...formData, image: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                     placeholder="https://..."
                   />
                 </div>
-                
+
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <Label htmlFor="description">Deskripsi Produk</Label>
@@ -302,12 +396,12 @@ const Products = () => {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Deskripsi akan dibuat otomatis oleh AI..."
                     rows={4}
                   />
                 </div>
-                
+
                 <div className="flex gap-2">
                   <Button type="submit" className="bg-gradient-primary flex-1">
                     {editingProduct ? "Update Produk" : "Simpan Produk"}
