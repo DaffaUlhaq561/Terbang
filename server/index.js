@@ -233,7 +233,13 @@ Jangan keluarkan teks lain selain JSON valid.`;
         .select('*')
         .order('id', { ascending: false });
       if (error) throw error;
-      res.json(data);
+      
+      const mapped = data.map(p => ({
+        ...p,
+        image: p.image_url,
+        salesTrend: p.sales_trend
+      }));
+      res.json(mapped);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -244,12 +250,30 @@ Jangan keluarkan teks lain selain JSON valid.`;
     try {
       if (!supabase) return res.status(500).json({ error: 'Supabase is null' });
       const { name, category, stock, price, image, description, salesTrend } = req.body;
+      
+      const payload = {
+        product_code: `P-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name, 
+        category, 
+        stock, 
+        price, 
+        image_url: image, 
+        description, 
+        sales_trend: salesTrend
+      };
+
       const { data, error } = await supabase
         .from('products')
-        .insert([{ name, category, stock, price, image, description, salesTrend }])
+        .insert([payload])
         .select();
       if (error) throw error;
-      res.json(data[0]);
+      
+      const result = {
+        ...data[0],
+        image: data[0].image_url,
+        salesTrend: data[0].sales_trend
+      };
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -260,13 +284,31 @@ Jangan keluarkan teks lain selain JSON valid.`;
     try {
       if (!supabase) return res.status(500).json({ error: 'Supabase is null' });
       const { id, name, category, stock, price, image, description, salesTrend } = req.body;
+      
+      const payload = {
+        name, 
+        category, 
+        stock, 
+        price, 
+        image_url: image, 
+        description, 
+        sales_trend: salesTrend,
+        updated_at: new Date().toISOString()
+      };
+
       const { data, error } = await supabase
         .from('products')
-        .update({ name, category, stock, price, image, description, salesTrend })
+        .update(payload)
         .eq('id', id)
         .select();
       if (error) throw error;
-      res.json(data[0]);
+      
+      const result = {
+        ...data[0],
+        image: data[0].image_url,
+        salesTrend: data[0].sales_trend
+      };
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
